@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>피카츄 카드 · 3D Tilt</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Baloo+2:wght@700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --pika:#ffd93b;
+    --pika-deep:#f2b705;
+    --ink:#2b2b2b;
+    --gx:50%;
+    --gy:50%;
+  }
+
+  *{box-sizing:border-box;}
+
+  html,body{height:100%;}
+
+  body{
+    margin:0;
+    display:grid;
+    place-items:center;
+    min-height:100dvh;
+    background:
+      radial-gradient(1200px 600px at 50% -10%, #333b57 0%, #171a26 55%, #0d0f16 100%);
+    font-family:"Jua","Baloo 2",system-ui,-apple-system,"Apple SD Gothic Neo",sans-serif;
+    color:#fff;
+    overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* 배경 은은한 빛 */
+  body::before{
+    content:"";
+    position:fixed;
+    width:60vmax;height:60vmax;
+    border-radius:50%;
+    background:radial-gradient(circle, rgba(255,217,59,.18), transparent 65%);
+    filter:blur(20px);
+    animation:breathe 7s ease-in-out infinite;
+    pointer-events:none;
+  }
+  @keyframes breathe{
+    0%,100%{transform:scale(1);opacity:.8;}
+    50%{transform:scale(1.15);opacity:1;}
+  }
+
+  /* ── 무대 ── */
+  .stage{
+    perspective:1200px;
+    perspective-origin:50% 50%;
+    animation:float 6s ease-in-out infinite;
+  }
+  @keyframes float{
+    0%,100%{transform:translateY(0);}
+    50%{transform:translateY(-14px);}
+  }
+
+  .card{
+    --turn:0deg;
+    position:relative;
+    width:320px;
+    height:448px;
+    border-radius:20px;
+    transform-style:preserve-3d;
+    transform:rotateX(0deg) rotateY(0deg);
+    transition:transform .7s cubic-bezier(.22,.8,.32,1);
+    will-change:transform;
+    cursor:grab;
+  }
+  .card.tilting{transition:transform .08s linear;}
+
+  /* 카드 배경 + 골드 테두리 */
+  .card::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    border-radius:inherit;
+    background:
+      linear-gradient(160deg,#fff6c9 0%, var(--pika) 18%, var(--pika-deep) 62%, #c98f04 100%);
+    box-shadow:
+      0 30px 60px -18px rgba(0,0,0,.75),
+      0 0 0 1px rgba(255,255,255,.35) inset;
+    transform:translateZ(-2px);
+  }
+
+  .card-inner{
+    position:absolute;
+    inset:9px;
+    border-radius:14px;
+    padding:12px;
+    display:flex;
+    flex-direction:column;
+    gap:9px;
+    background:linear-gradient(180deg,#fffdf3,#ffeeb8);
+    box-shadow:0 2px 10px rgba(120,80,0,.25) inset;
+    transform-style:preserve-3d;
+    overflow:hidden;
+  }
+
+  /* 홀로그램 시트 */
+  .holo{
+    position:absolute;
+    inset:0;
+    border-radius:inherit;
+    background:
+      linear-gradient(115deg,
+        transparent 20%,
+        rgba(255,0,128,.35) 33%,
+        rgba(255,230,0,.35) 45%,
+        rgba(0,220,255,.35) 58%,
+        rgba(140,0,255,.35) 70%,
+        transparent 82%);
+    background-size:280% 280%;
+    background-position:calc(var(--gx)) calc(var(--gy));
+    mix-blend-mode:color-dodge;
+    opacity:0;
+    transition:opacity .35s ease;
+    pointer-events:none;
+    transform:translateZ(1px);
+  }
+
+  /* 마우스 광택 */
+  .glare{
+    position:absolute;
+    inset:0;
+    border-radius:inherit;
+    background:radial-gradient(circle at var(--gx) var(--gy),
+      rgba(255,255,255,.9) 0%,
+      rgba(255,255,255,.25) 22%,
+      transparent 52%);
+    mix-blend-mode:overlay;
+    opacity:0;
+    transition:opacity .35s ease;
+    pointer-events:none;
+    transform:translateZ(2px);
+  }
+  .card-wrap:hover .holo{opacity:.75;}
+  .card-wrap:hover .glare{opacity:1;}
+
+  /* ── 헤더 ── */
+  .card-top{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:2px 2px 6px;
+    border-bottom:2px solid rgba(180,130,0,.35);
+    transform:translateZ(34px);
+  }
+  .poke-name{
+    font-size:22px;
+    color:var(--ink);
+    letter-spacing:.5px;
+  }
+  .hp{
+    margin-left:auto;
+    font-family:"Baloo 2",sans-serif;
+    font-weight:800;
+    font-size:20px;
+    color:#e23a2e;
+    display:flex;
+    align-items:baseline;
+    gap:3px;
+  }
+  .hp em{font-style:normal;font-size:12px;color:#333;}
+  .type{
+    display:grid;
+    place-items:center;
+    width:26px;height:26px;
+    border-radius:50%;
+    background:radial-gradient(circle at 35% 30%,#fff08a,var(--pika-deep));
+    box-shadow:0 0 0 2px #fff, 0 2px 6px rgba(0,0,0,.3);
+    font-size:14px;
+  }
+
+  /* ── 일러스트 ── */
+  .art{
+    position:relative;
+    flex:1;
+    border-radius:10px;
+    border:2px solid rgba(160,120,0,.5);
+    background:
+      radial-gradient(circle at 50% 30%, #cfefff 0%, #9fd9ff 45%, #6cc0f2 100%);
+    display:grid;
+    place-items:center;
+    overflow:hidden;
+    transform:translateZ(52px);
+    box-shadow:0 12px 22px -12px rgba(0,60,110,.7);
+  }
+  .art::after{ /* 유리 반사 */
+    content:"";
+    position:absolute;inset:0;
+    background:linear-gradient(120deg,rgba(255,255,255,.5),transparent 45%);
+    pointer-events:none;
+  }
+  .art svg{
+    width:88%;
+    height:auto;
+    filter:drop-shadow(0 12px 10px rgba(0,40,80,.3));
+  }
+
+  /* ── 기술 ── */
+  .moves{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    transform:translateZ(30px);
+  }
+  .move{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:6px 10px;
+    border-radius:9px;
+    background:linear-gradient(180deg,#ffffff,#ffe9a3);
+    border:1.5px solid rgba(170,125,0,.45);
+    box-shadow:0 2px 0 rgba(160,110,0,.25);
+  }
+  .energy{
+    font-size:13px;
+    letter-spacing:-2px;
+    filter:drop-shadow(0 0 2px rgba(255,200,0,.8));
+  }
+  .move-name{
+    color:var(--ink);
+    font-size:15px;
+  }
+  .dmg{
+    margin-left:auto;
+    font-family:"Baloo 2",sans-serif;
+    font-weight:800;
+    font-size:19px;
+    color:var(--ink);
+  }
+
+  /* ── 하단 ── */
+  .card-bottom{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-size:11.5px;
+    color:#7a5a12;
+    padding:6px 4px 0;
+    border-top:2px solid rgba(180,130,0,.35);
+    transform:translateZ(24px);
+  }
+  .card-bottom b{color:var(--ink);}
+
+  .hint{
+    position:fixed;
+    bottom:26px;
+    left:50%;
+    transform:translateX(-50%);
+    font-size:13px;
+    letter-spacing:1px;
+    color:rgba(255,255,255,.45);
+    animation:float 4s ease-in-out infinite;
+  }
+</style>
+</head>
+<body>
+
+  <div class="stage">
+    <div class="card-wrap" id="wrap">
+      <div class="card" id="card">
+        <div class="card-inner">
+          <header class="card-top">
+            <span class="poke-name">피카츄</span>
+            <span class="hp"><em>HP</em> 60</span>
+            <span class="type">⚡</span>
+          </header>
+
+          <div class="art">
+            <!-- ───── 피카츄 ───── -->
+            <svg viewBox="0 0 220 240" xmlns="http://www.w3.org/2000/svg" aria-label="피카츄">
+              <defs>
+                <radialGradient id="bodyGrad" cx="38%" cy="30%" r="75%">
+                  <stop offset="0%" stop-color="#fff08a"/>
+                  <stop offset="55%" stop-color="#ffd93b"/>
+                  <stop offset="100%" stop-color="#f2b705"/>
+                </radialGradient>
+                <radialGradient id="cheek" cx="40%" cy="35%" r="70%">
+                  <stop offset="0%" stop-color="#ff8a8a"/>
+                  <stop offset="100%" stop-color="#e23a2e"/>
+                </radialGradient>
+                <clipPath id="earL"><path d="M-13,22 C-18,-8 -11,-46 0,-56 C11,-46 18,-8 13,22 Z"/></clipPath>
+                <clipPath id="earR"><path d="M-13,22 C-18,-8 -11,-46 0,-56 C11,-46 18,-8 13,22 Z"/></clipPath>
+                <filter id="soft" x="-40%" y="-40%" width="180%" height="180%">
+                  <feGaussianBlur stdDeviation="6"/>
+                </filter>
+              </defs>
+
+              <!-- 그림자 -->
+              <ellipse cx="108" cy="224" rx="62" ry="11" fill="#2a6f9e" opacity=".25" filter="url(#soft)"/>
+
+              <!-- 꼬리 -->
+              <g>
+                <polygon points="150,196 172,162 158,155 186,116 172,110 202,66 176,110 190,116 160,154 172,160 146,190"
+                         fill="#f2b705" stroke="#d99a00" stroke-width="3" stroke-linejoin="round"/>
+                <polygon points="150,196 160,180 150,172 141,190" fill="#c8913a" stroke="none"/>
+              </g>
+
+              <!-- 발 -->
+              <ellipse cx="84" cy="212" rx="18" ry="12" fill="url(#bodyGrad)" stroke="#d99a00" stroke-width="3"/>
+              <ellipse cx="130" cy="212" rx="18" ry="12" fill="url(#bodyGrad)" stroke="#d99a00" stroke-width="3"/>
+
+              <!-- 몸통 -->
+              <ellipse cx="106" cy="170" rx="51" ry="50" fill="url(#bodyGrad)" stroke="#d99a00" stroke-width="3"/>
+
+              <!-- 팔 -->
+              <ellipse cx="63" cy="158" rx="13" ry="19" fill="#ffd93b" stroke="#d99a00" stroke-width="3"
+                       transform="rotate(-22 63 158)"/>
+              <ellipse cx="149" cy="158" rx="13" ry="19" fill="#ffd93b" stroke="#d99a00" stroke-width="3"
+                       transform="rotate(22 149 158)"/>
+
+              <!-- 귀 -->
+              <g transform="translate(58,54) rotate(-30)">
+                <path d="M-13,22 C-18,-8 -11,-46 0,-56 C11,-46 18,-8 13,22 Z"
+                      fill="url(#bodyGrad)" stroke="#d99a00" stroke-width="3"/>
+                <rect x="-22" y="-62" width="44" height="35" fill="#2b2b2b" clip-path="url(#earL)"/>
+              </g>
+              <g transform="translate(152,54) rotate(30)">
+                <path d="M-13,22 C-18,-8 -11,-46 0,-56 C11,-46 18,-8 13,22 Z"
+                      fill="url(#bodyGrad)" stroke="#d99a00" stroke-width="3"/>
+                <rect x="-22" y="-62" width="44" height="35" fill="#2b2b2b" clip-path="url(#earR)"/>
+              </g>
+
+              <!-- 머리 -->
+              <ellipse cx="105" cy="96" rx="55" ry="50" fill="url(#bodyGrad)" stroke="#d99a00" stroke-width="3"/>
+
+              <!-- 볼 -->
+              <circle cx="66" cy="110" r="14" fill="url(#cheek)"/>
+              <circle cx="144" cy="110" r="14" fill="url(#cheek)"/>
+
+              <!-- 눈 -->
+              <circle cx="84" cy="88" r="10" fill="#2b2b2b"/>
+              <circle cx="126" cy="88" r="10" fill="#2b2b2b"/>
+              <circle cx="80.5" cy="84" r="3.4" fill="#fff"/>
+              <circle cx="122.5" cy="84" r="3.4" fill="#fff"/>
+              <circle cx="87" cy="92" r="1.6" fill="#fff" opacity=".85"/>
+              <circle cx="129" cy="92" r="1.6" fill="#fff" opacity=".85"/>
+
+              <!-- 코 -->
+              <ellipse cx="105" cy="101" rx="3.2" ry="2.3" fill="#2b2b2b"/>
+
+              <!-- 입 -->
+              <path d="M92,109 Q98.5,118 105,109 Q111.5,118 118,109"
+                    fill="none" stroke="#2b2b2b" stroke-width="2.6"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+
+          <div class="moves">
+            <div class="move">
+              <span class="energy">⚡</span>
+              <span class="move-name">전기쇼크</span>
+              <span class="dmg">20</span>
+            </div>
+            <div class="move">
+              <span class="energy">⚡⚡</span>
+              <span class="move-name">백만볼트</span>
+              <span class="dmg">50</span>
+            </div>
+          </div>
+
+          <footer class="card-bottom">
+            <span>약점 <b>⚔ ×2</b></span>
+            <span>저항 <b>-30</b></span>
+            <span>후퇴 <b>●</b></span>
+          </footer>
+        </div>
+
+        <div class="holo"></div>
+        <div class="glare"></div>
+      </div>
+    </div>
+  </div>
+
+  <p class="hint">마우스를 카드 위로 움직여 보세요 ✨</p>
+
+<script>
+  const wrap = document.getElementById('wrap');
+  const card = document.getElementById('card');
+
+  const MAX_TILT = 16;   // 최대 기울기(도)
+  const SCALE = 1.06;    // hover 확대
+
+  wrap.addEventListener('pointermove', (e) => {
+    const r = card.getBoundingClientRect();
+    const px = (e.clientX - r.left) / r.width;   // 0 ~ 1
+    const py = (e.clientY - r.top) / r.height;   // 0 ~ 1
+
+    const rotateY = (px - 0.5) * 2 * MAX_TILT;   // 좌우
+    const rotateX = (0.5 - py) * 2 * MAX_TILT;   // 상하
+
+    card.classList.add('tilting');
+    card.style.transform =
+      `rotateX(${rotateX.toFixed(2)}deg) rotateY(${rotateY.toFixed(2)}deg) scale(${SCALE})`;
+
+    card.style.setProperty('--gx', (px * 100).toFixed(1) + '%');
+    card.style.setProperty('--gy', (py * 100).toFixed(1) + '%');
+  });
+
+  wrap.addEventListener('pointerleave', () => {
+    card.classList.remove('tilting');
+    card.style.transform = 'rotateX(0deg) rotateY(0deg) scale(1)';
+    card.style.setProperty('--gx', '50%');
+    card.style.setProperty('--gy', '50%');
+  });
+</script>
+</body>
+</html>
